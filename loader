@@ -1,0 +1,662 @@
+local Players    = game:GetService("Players")
+local UIS        = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local task, pcall, pairs, ipairs = task, pcall, pairs, ipairs
+
+local function rnd(len)
+    local s = ""
+    for i = 1, len do s = s .. string.char(math.random(97, 122)) end
+    return s
+end
+
+-- ============================================================
+-- KAWATAN HUB COLOUR PALETTE
+-- ============================================================
+local C = {
+    -- backgrounds
+    bg      = Color3.fromRGB(12,  16,  22),   -- deep navy
+    card    = Color3.fromRGB(18,  24,  34),   -- dark card
+    cell    = Color3.fromRGB(22,  30,  42),   -- slightly lighter cell
+    log     = Color3.fromRGB(10,  14,  20),   -- log area
+
+    -- borders / structure
+    border  = Color3.fromRGB(30,  130, 200),  -- cyan glow border (like the outer UI frame)
+    borderInner = Color3.fromRGB(35,  50,  70),  -- subtle inner borders
+    dim     = Color3.fromRGB(25,  38,  55),   -- dim separators
+
+    -- accent (cyan/blue — matches the toggle & title color)
+    accent  = Color3.fromRGB(50,  170, 255),  -- bright cyan-blue
+    accentDim = Color3.fromRGB(20, 100, 180), -- dimmer accent
+
+    -- text
+    text    = Color3.fromRGB(220, 230, 240),  -- main white-ish text
+    subtext = Color3.fromRGB(130, 160, 190),  -- secondary text
+    muted   = Color3.fromRGB(60,  85,  115),  -- muted/disabled
+
+    -- status
+    green   = Color3.fromRGB(50,  210, 130),
+    title   = Color3.fromRGB(255, 255, 255),  -- pure white title like "Kawatan Hub"
+}
+
+-- ============================================================
+-- GUI ROOT
+-- ============================================================
+local loadGui = Instance.new("ScreenGui")
+loadGui.Name           = rnd(12)
+loadGui.Parent         = game:GetService("CoreGui")
+loadGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+loadGui.IgnoreGuiInset = true
+
+local loadBg = Instance.new("Frame", loadGui)
+loadBg.Size             = UDim2.new(1, 0, 1, 0)
+loadBg.BackgroundColor3 = C.bg
+loadBg.BorderSizePixel  = 0
+loadBg.ZIndex           = 1
+
+-- subtle dot grid pattern (very faint)
+for i = 1, 8 do
+    local g = Instance.new("Frame", loadBg)
+    g.BackgroundColor3       = C.accent
+    g.BackgroundTransparency = 0.96
+    g.BorderSizePixel        = 0
+    g.Size                   = UDim2.new(1, 0, 0, 1)
+    g.Position               = UDim2.new(0, 0, i/8, 0)
+    g.ZIndex                 = 2
+end
+for i = 1, 12 do
+    local g = Instance.new("Frame", loadBg)
+    g.BackgroundColor3       = C.accent
+    g.BackgroundTransparency = 0.96
+    g.BorderSizePixel        = 0
+    g.Size                   = UDim2.new(0, 1, 1, 0)
+    g.Position               = UDim2.new(i/12, 0, 0, 0)
+    g.ZIndex                 = 2
+end
+
+-- outer glow border (mimics the cyan border on the Kawatan Hub UI)
+local outerGlow = Instance.new("Frame", loadBg)
+outerGlow.Size             = UDim2.new(0, 440, 0, 320)
+outerGlow.Position         = UDim2.new(0.5, -222, 0.5, -162)
+outerGlow.BackgroundColor3 = C.border
+outerGlow.BorderSizePixel  = 0
+outerGlow.BackgroundTransparency = 1
+outerGlow.ZIndex           = 4
+Instance.new("UICorner", outerGlow).CornerRadius = UDim.new(0, 18)
+local outerStroke = Instance.new("UIStroke", outerGlow)
+outerStroke.Color     = C.border
+outerStroke.Thickness = 2
+outerStroke.Transparency = 0.3
+
+-- scan line
+local scanLine = Instance.new("Frame", loadBg)
+scanLine.Size                 = UDim2.new(1, 0, 0, 1)
+scanLine.BackgroundColor3     = C.accent
+scanLine.BackgroundTransparency = 0.82
+scanLine.BorderSizePixel      = 0
+scanLine.ZIndex               = 3
+
+-- ============================================================
+-- CARD  (matches Kawatan Hub panel proportions)
+-- ============================================================
+local CARD_W, CARD_H = 430, 305
+local card = Instance.new("Frame", loadBg)
+card.Size             = UDim2.new(0, CARD_W, 0, CARD_H)
+card.Position         = UDim2.new(0.5, -CARD_W/2, 0.5, -CARD_H/2)
+card.BackgroundColor3 = C.card
+card.BorderSizePixel  = 0
+card.ZIndex           = 5
+Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
+local cardStroke = Instance.new("UIStroke", card)
+cardStroke.Color     = C.border
+cardStroke.Thickness = 1.5
+cardStroke.Transparency = 0.2
+
+-- ── HEADER  (mimics "Kawatan Hub" title bar)
+local headerBg = Instance.new("Frame", card)
+headerBg.Size             = UDim2.new(1, 0, 0, 46)
+headerBg.Position         = UDim2.new(0, 0, 0, 0)
+headerBg.BackgroundColor3 = C.card
+headerBg.BorderSizePixel  = 0
+headerBg.ZIndex           = 6
+Instance.new("UICorner", headerBg).CornerRadius = UDim.new(0, 14)
+
+local headerDiv = Instance.new("Frame", card)
+headerDiv.Size             = UDim2.new(1, 0, 0, 1)
+headerDiv.Position         = UDim2.new(0, 0, 0, 46)
+headerDiv.BackgroundColor3 = C.borderInner
+headerDiv.BorderSizePixel  = 0
+headerDiv.ZIndex           = 6
+
+local titleLbl = Instance.new("TextLabel", headerBg)
+titleLbl.BackgroundTransparency = 1
+titleLbl.Size           = UDim2.new(1, -120, 1, 0)
+titleLbl.Position       = UDim2.new(0, 16, 0, 0)
+titleLbl.Text           = "Kawatan Hub"
+titleLbl.TextColor3     = C.title
+titleLbl.TextSize       = 20
+titleLbl.Font           = Enum.Font.GothamBlack
+titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+titleLbl.ZIndex         = 7
+
+-- spinning ring (right side of header)
+local RING = 32
+local ringOuter = Instance.new("Frame", headerBg)
+ringOuter.BackgroundTransparency = 1
+ringOuter.Size     = UDim2.new(0, RING, 0, RING)
+ringOuter.Position = UDim2.new(1, -16-RING, 0.5, -RING/2)
+ringOuter.ZIndex   = 7
+
+local ringBg2 = Instance.new("Frame", ringOuter)
+ringBg2.BackgroundTransparency = 1
+ringBg2.Size   = UDim2.new(1, 0, 1, 0)
+ringBg2.ZIndex = 7
+Instance.new("UICorner", ringBg2).CornerRadius = UDim.new(1, 0)
+local ringBgS2 = Instance.new("UIStroke", ringBg2)
+ringBgS2.Color = C.dim; ringBgS2.Thickness = 2
+
+local ringArc = Instance.new("Frame", ringOuter)
+ringArc.BackgroundTransparency = 1
+ringArc.Size   = UDim2.new(1, 0, 1, 0)
+ringArc.ZIndex = 8
+Instance.new("UICorner", ringArc).CornerRadius = UDim.new(1, 0)
+local ringArcS = Instance.new("UIStroke", ringArc)
+ringArcS.Color = C.accent; ringArcS.Thickness = 2
+
+local ringPct = Instance.new("TextLabel", ringOuter)
+ringPct.BackgroundTransparency = 1
+ringPct.Size           = UDim2.new(1, 0, 1, 0)
+ringPct.Text           = "0%"
+ringPct.TextColor3     = C.accent
+ringPct.TextSize       = 9
+ringPct.Font           = Enum.Font.GothamBlack
+ringPct.TextXAlignment = Enum.TextXAlignment.Center
+ringPct.TextYAlignment = Enum.TextYAlignment.Center
+ringPct.ZIndex         = 9
+
+-- ── TAB BAR  (Combat | Protect | Visual | Settings style)
+local tabBar = Instance.new("Frame", card)
+tabBar.Size             = UDim2.new(1, -24, 0, 30)
+tabBar.Position         = UDim2.new(0, 12, 0, 54)
+tabBar.BackgroundColor3 = C.dim
+tabBar.BorderSizePixel  = 0
+tabBar.ZIndex           = 6
+Instance.new("UICorner", tabBar).CornerRadius = UDim.new(0, 8)
+
+local tabNames = { "Speed", "Steal", "Combat", "Status" }
+local tabLabels = {}
+for i, name in ipairs(tabNames) do
+    local tab = Instance.new("TextLabel", tabBar)
+    tab.BackgroundTransparency = (i == 1) and 1 or 1
+    tab.Size     = UDim2.new(0.25, 0, 1, 0)
+    tab.Position = UDim2.new((i-1)*0.25, 0, 0, 0)
+    tab.Text     = name
+    tab.TextColor3 = (i == 1) and C.accent or C.muted
+    tab.TextSize = 11
+    tab.Font     = Enum.Font.GothamBold
+    tab.ZIndex   = 7
+    table.insert(tabLabels, tab)
+end
+-- active tab indicator
+local tabIndicator = Instance.new("Frame", tabBar)
+tabIndicator.Size             = UDim2.new(0.25, -4, 1, -4)
+tabIndicator.Position         = UDim2.new(0, 2, 0, 2)
+tabIndicator.BackgroundColor3 = C.accentDim
+tabIndicator.BorderSizePixel  = 0
+tabIndicator.ZIndex           = 6
+Instance.new("UICorner", tabIndicator).CornerRadius = UDim.new(0, 6)
+local tabStroke = Instance.new("UIStroke", tabIndicator)
+tabStroke.Color = C.accent; tabStroke.Thickness = 1; tabStroke.Transparency = 0.5
+
+-- ── 3 MODULE ROWS  (styled like the toggle rows in the image)
+local moduleData = {
+    { label = "Speed Control",  sub = "WalkSpeed ctrl"  },
+    { label = "Auto Steal",     sub = "Auto steal sys"  },
+    { label = "Auto Duel",      sub = "Auto duel sys"   },
+}
+local modCells = {}
+local ROW_Y  = 94
+local ROW_H  = 42
+local ROW_GAP = 5
+
+for i, m in ipairs(moduleData) do
+    local row = Instance.new("Frame", card)
+    row.BackgroundColor3 = C.cell
+    row.BorderSizePixel  = 0
+    row.Size             = UDim2.new(1, -24, 0, ROW_H)
+    row.Position         = UDim2.new(0, 12, 0, ROW_Y + (i-1)*(ROW_H+ROW_GAP))
+    row.ZIndex           = 6
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    local rs = Instance.new("UIStroke", row)
+    rs.Color = C.borderInner; rs.Thickness = 1
+
+    -- label (left)
+    local rlbl = Instance.new("TextLabel", row)
+    rlbl.BackgroundTransparency = 1
+    rlbl.Size           = UDim2.new(1, -80, 1, 0)
+    rlbl.Position       = UDim2.new(0, 14, 0, 0)
+    rlbl.Text           = m.label
+    rlbl.TextColor3     = C.text
+    rlbl.TextSize       = 13
+    rlbl.Font           = Enum.Font.GothamBold
+    rlbl.TextXAlignment = Enum.TextXAlignment.Left
+    rlbl.ZIndex         = 7
+
+    -- toggle pill (right) — mimics the blue toggle in the image
+    local toggleBg = Instance.new("Frame", row)
+    toggleBg.Size             = UDim2.new(0, 42, 0, 22)
+    toggleBg.Position         = UDim2.new(1, -54, 0.5, -11)
+    toggleBg.BackgroundColor3 = C.dim
+    toggleBg.BorderSizePixel  = 0
+    toggleBg.ZIndex           = 7
+    Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(1, 0)
+
+    local toggleKnob = Instance.new("Frame", toggleBg)
+    toggleKnob.Size             = UDim2.new(0, 16, 0, 16)
+    toggleKnob.Position         = UDim2.new(0, 3, 0.5, -8)
+    toggleKnob.BackgroundColor3 = C.muted
+    toggleKnob.BorderSizePixel  = 0
+    toggleKnob.ZIndex           = 8
+    Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(1, 0)
+
+    -- status label on the right
+    local rval = Instance.new("TextLabel", row)
+    rval.BackgroundTransparency = 1
+    rval.Size           = UDim2.new(0, 0, 0, 0)
+    rval.Position       = UDim2.new(0, 14, 0, 0)
+    rval.Text           = ""
+    rval.TextColor3     = C.muted
+    rval.TextSize       = 10
+    rval.Font           = Enum.Font.GothamBold
+    rval.ZIndex         = 7
+
+    table.insert(modCells, { row=row, rlbl=rlbl, toggleBg=toggleBg, toggleKnob=toggleKnob, rs=rs })
+end
+
+-- ── LOG BOX
+local LOG_Y = ROW_Y + 3*(ROW_H+ROW_GAP) + 6
+local logBox = Instance.new("Frame", card)
+logBox.BackgroundColor3 = C.log
+logBox.BorderSizePixel  = 0
+logBox.Size             = UDim2.new(1, -24, 0, 54)
+logBox.Position         = UDim2.new(0, 12, 0, LOG_Y)
+logBox.ZIndex           = 6
+logBox.ClipsDescendants = true
+Instance.new("UICorner", logBox).CornerRadius = UDim.new(0, 8)
+local logStroke = Instance.new("UIStroke", logBox)
+logStroke.Color = C.borderInner; logStroke.Thickness = 1
+
+local logLines = {}
+for i = 1, 3 do
+    local ll = Instance.new("TextLabel", logBox)
+    ll.BackgroundTransparency = 1
+    ll.Size           = UDim2.new(1, -16, 0, 14)
+    ll.Position       = UDim2.new(0, 8, 0, 4 + (i-1)*16)
+    ll.Text           = ""
+    ll.TextColor3     = C.muted
+    ll.TextSize       = 9
+    ll.Font           = Enum.Font.Code
+    ll.TextXAlignment = Enum.TextXAlignment.Left
+    ll.ZIndex         = 7
+    table.insert(logLines, ll)
+end
+
+local cursorLbl = Instance.new("TextLabel", logBox)
+cursorLbl.BackgroundTransparency = 1
+cursorLbl.Size           = UDim2.new(0, 8, 0, 14)
+cursorLbl.Text           = "█"
+cursorLbl.TextColor3     = C.accent
+cursorLbl.TextSize       = 9
+cursorLbl.Font           = Enum.Font.Code
+cursorLbl.TextXAlignment = Enum.TextXAlignment.Left
+cursorLbl.Visible        = false
+cursorLbl.ZIndex         = 8
+
+-- ── PROGRESS BAR
+local BAR_Y = LOG_Y + 60
+local barTrack = Instance.new("Frame", card)
+barTrack.BackgroundColor3 = C.dim
+barTrack.BorderSizePixel  = 0
+barTrack.Size             = UDim2.new(1, -24, 0, 4)
+barTrack.Position         = UDim2.new(0, 12, 0, BAR_Y)
+barTrack.ZIndex           = 6
+barTrack.ClipsDescendants = true
+Instance.new("UICorner", barTrack).CornerRadius = UDim.new(1, 0)
+
+local barFill = Instance.new("Frame", barTrack)
+barFill.BackgroundColor3 = C.accent
+barFill.BorderSizePixel  = 0
+barFill.Size             = UDim2.new(0, 0, 1, 0)
+barFill.ZIndex           = 7
+Instance.new("UICorner", barFill).CornerRadius = UDim.new(1, 0)
+
+local statusLbl = Instance.new("TextLabel", card)
+statusLbl.BackgroundTransparency = 1
+statusLbl.Size           = UDim2.new(1, -70, 0, 14)
+statusLbl.Position       = UDim2.new(0, 12, 0, BAR_Y + 8)
+statusLbl.Text           = "Initializing..."
+statusLbl.TextColor3     = C.subtext
+statusLbl.TextSize       = 9
+statusLbl.Font           = Enum.Font.GothamBold
+statusLbl.TextXAlignment = Enum.TextXAlignment.Left
+statusLbl.ZIndex         = 6
+
+local pctLbl = Instance.new("TextLabel", card)
+pctLbl.BackgroundTransparency = 1
+pctLbl.Size           = UDim2.new(0, 50, 0, 14)
+pctLbl.Position       = UDim2.new(1, -62, 0, BAR_Y + 8)
+pctLbl.Text           = "0%"
+pctLbl.TextColor3     = C.accent
+pctLbl.TextSize       = 9
+pctLbl.Font           = Enum.Font.GothamBlack
+pctLbl.TextXAlignment = Enum.TextXAlignment.Right
+pctLbl.ZIndex         = 6
+
+-- ============================================================
+-- ANIMATIONS
+-- ============================================================
+local loadDone = false
+
+-- outer border pulse (mimics the glowing cyan frame)
+task.spawn(function()
+    while not loadDone do
+        TweenService:Create(outerStroke,
+            TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            {Transparency = 0.0}):Play()
+        task.wait(1.5)
+        TweenService:Create(outerStroke,
+            TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            {Transparency = 0.55}):Play()
+        task.wait(1.5)
+    end
+end)
+
+-- scan line sweep
+task.spawn(function()
+    while not loadDone do
+        TweenService:Create(scanLine,
+            TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            {Position = UDim2.new(0,0,1,-1)}):Play()
+        task.wait(2.4)
+        TweenService:Create(scanLine,
+            TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            {Position = UDim2.new(0,0,0,0)}):Play()
+        task.wait(2.4)
+    end
+end)
+
+-- ring spin
+task.spawn(function()
+    while not loadDone do
+        ringArc.Rotation = 0
+        local t = TweenService:Create(ringArc,
+            TweenInfo.new(1.0, Enum.EasingStyle.Linear), {Rotation = 360})
+        t:Play(); t.Completed:Wait()
+    end
+end)
+
+-- tab cycle (cosmetic — cycles through tabs while loading)
+task.spawn(function()
+    local ti = 1
+    while not loadDone do
+        task.wait(2.2)
+        if loadDone then break end
+        -- deactivate old
+        tabLabels[ti].TextColor3 = C.muted
+        ti = (ti % #tabLabels) + 1
+        -- activate new
+        tabLabels[ti].TextColor3 = C.accent
+        TweenService:Create(tabIndicator,
+            TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {Position = UDim2.new((ti-1)*0.25, 2, 0, 2)}):Play()
+    end
+end)
+
+-- cursor blink
+task.spawn(function()
+    while not loadDone do
+        cursorLbl.TextTransparency = 0
+        task.wait(0.5)
+        cursorLbl.TextTransparency = 1
+        task.wait(0.5)
+    end
+end)
+
+-- subtitle typewriter on title (sub-title below "Kawatan Hub")
+local subLbl = Instance.new("TextLabel", headerBg)
+subLbl.BackgroundTransparency = 1
+subLbl.Size           = UDim2.new(1, -120, 0, 14)
+subLbl.Position       = UDim2.new(0, 16, 0, 28)
+subLbl.Text           = "INITIALIZING SYSTEMS"
+subLbl.TextColor3     = C.muted
+subLbl.TextSize       = 8
+subLbl.Font           = Enum.Font.GothamBold
+subLbl.TextXAlignment = Enum.TextXAlignment.Left
+subLbl.ZIndex         = 7
+
+local subtitles = {
+    "INITIALIZING SYSTEMS",
+    "BYPASSING ANTICHEAT",
+    "INJECTING PAYLOAD",
+    "ENCRYPTING CHANNELS",
+    "LOADING MODULES",
+    "SPOOFING FINGERPRINT",
+}
+task.spawn(function()
+    local si = 1
+    while not loadDone do
+        local line = subtitles[si]
+        subLbl.Text = ""
+        for c = 1, #line do
+            if loadDone then break end
+            subLbl.Text = line:sub(1,c)
+            task.wait(0.04)
+        end
+        task.wait(1.2)
+        for c = #line, 0, -1 do
+            if loadDone then break end
+            subLbl.Text = line:sub(1,c)
+            task.wait(0.02)
+        end
+        si = (si % #subtitles) + 1
+        task.wait(0.2)
+    end
+end)
+
+-- ============================================================
+-- LOG HELPER
+-- ============================================================
+local logHistory = {}
+local function pushLog(txt, bright)
+    table.insert(logHistory, {txt=txt, bright=bright})
+    if #logHistory > 3 then table.remove(logHistory, 1) end
+    for i, entry in ipairs(logHistory) do
+        logLines[i].Text       = entry.txt
+        logLines[i].TextColor3 = entry.bright and C.subtext or C.muted
+    end
+    local lastLine = logLines[#logHistory]
+    if lastLine and bright then
+        cursorLbl.Visible  = true
+        cursorLbl.Position = UDim2.new(0, 8 + lastLine.TextBounds.X + 2, 0, 4 + (#logHistory-1)*16)
+    end
+end
+
+-- ============================================================
+-- LOAD SEQUENCE
+-- ============================================================
+local stageData = {
+    { pct=30, modIdx=1, msg="Loading Speed Control...",  logTxt="[ 00:01 ]  speed_module ... injected"  },
+    { pct=62, modIdx=2, msg="Loading Auto Steal...",     logTxt="[ 00:03 ]  steal_module ... injected"  },
+    { pct=88, modIdx=3, msg="Loading Auto Duel...",      logTxt="[ 00:05 ]  combat_module ... injected" },
+    { pct=96, modIdx=nil, msg="Finalizing...",           logTxt="[ 00:07 ]  finalizing payload..."      },
+}
+
+local loadingMessages = {
+    "Initializing systems...",
+    "Patching memory...",
+    "Loading modules...",
+    "Verifying integrity...",
+    "Encrypting channels...",
+    "Calibrating modules...",
+    "Almost there...",
+}
+
+pushLog("[ 00:00 ]  boot sequence started", false)
+
+local nextStage = 1
+local msgIdx    = 1
+
+local function applyStage(sc)
+    statusLbl.Text = sc.msg
+
+    if sc.modIdx then
+        if sc.modIdx > 1 then
+            local prev = modCells[sc.modIdx - 1]
+            -- toggle ON animation for completed module
+            TweenService:Create(prev.toggleBg, TweenInfo.new(0.25),
+                {BackgroundColor3 = C.accent}):Play()
+            TweenService:Create(prev.toggleKnob, TweenInfo.new(0.25),
+                {Position = UDim2.new(1, -19, 0.5, -8), BackgroundColor3 = Color3.fromRGB(255,255,255)}):Play()
+            TweenService:Create(prev.rs, TweenInfo.new(0.3),
+                {Color = C.accent, Transparency = 0.5}):Play()
+        end
+        -- current module loading pulse
+        local cur = modCells[sc.modIdx]
+        TweenService:Create(cur.rs, TweenInfo.new(0.3),
+            {Color = C.accent, Transparency = 0.7}):Play()
+    end
+
+    pushLog(sc.logTxt, true)
+end
+
+-- Phase 1: 0→96% in ~8 seconds
+local PHASE1_STEPS  = 96
+local PHASE1_TIME   = 8.0
+local PHASE1_STEP_T = PHASE1_TIME / PHASE1_STEPS
+
+TweenService:Create(barFill,
+    TweenInfo.new(PHASE1_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    {Size = UDim2.new(0.96, 0, 1, 0)}):Play()
+
+for i = 0, PHASE1_STEPS do
+    local pct = i
+    ringPct.Text = pct .. "%"
+    pctLbl.Text  = pct .. "%"
+
+    while nextStage <= #stageData and pct >= stageData[nextStage].pct do
+        applyStage(stageData[nextStage])
+        nextStage = nextStage + 1
+    end
+
+    if i % 8 == 0 then
+        statusLbl.Text = loadingMessages[((msgIdx-1) % #loadingMessages) + 1]
+        msgIdx = msgIdx + 1
+    end
+
+    task.wait(PHASE1_STEP_T)
+end
+
+-- Phase 2: 96→100% slow crawl
+local PHASE2_TIME = 290.0
+local slowMessages = {
+    "Verifying kernel signatures...",
+    "Deep scanning memory blocks...",
+    "Resolving pointer chains...",
+    "Patching bytecode checksums...",
+    "Rebuilding obfuscation layers...",
+    "Synchronizing with remote node...",
+    "Bypassing integrity validator...",
+    "Finalizing stealth payload...",
+    "Cross-referencing injection map...",
+    "Waiting for server handshake...",
+    "Validating encryption keys...",
+    "Calibrating exploit vectors...",
+}
+
+TweenService:Create(barFill,
+    TweenInfo.new(PHASE2_TIME, Enum.EasingStyle.Linear),
+    {Size = UDim2.new(1, 0, 1, 0)}):Play()
+
+local slowIdx     = 1
+local phase2Start = tick()
+
+task.spawn(function()
+    while not loadDone do
+        local msg = slowMessages[((slowIdx-1) % #slowMessages) + 1]
+        statusLbl.Text = msg
+        pushLog("[ " .. string.format("%02d", slowIdx*15) .. ":00 ]  " .. msg:lower(), true)
+        slowIdx = slowIdx + 1
+        task.wait(15)
+    end
+end)
+
+local curPct = 96
+while curPct < 99 do
+    local elapsed = tick() - phase2Start
+    local newPct  = 96 + math.floor((elapsed / PHASE2_TIME) * 4)
+    if newPct > curPct and newPct < 100 then
+        curPct = newPct
+        ringPct.Text = curPct .. "%"
+        pctLbl.Text  = curPct .. "%"
+    end
+    task.wait(1)
+end
+
+local remaining = PHASE2_TIME - (tick() - phase2Start)
+if remaining > 0 then task.wait(remaining) end
+
+-- ── FINISH
+loadDone = true
+cursorLbl.Visible = false
+
+for _, mc in ipairs(modCells) do
+    TweenService:Create(mc.toggleBg, TweenInfo.new(0.3),
+        {BackgroundColor3 = C.accent}):Play()
+    TweenService:Create(mc.toggleKnob, TweenInfo.new(0.3),
+        {Position = UDim2.new(1, -19, 0.5, -8), BackgroundColor3 = Color3.fromRGB(255,255,255)}):Play()
+    TweenService:Create(mc.rs, TweenInfo.new(0.3),
+        {Color = C.green, Transparency = 0.4}):Play()
+end
+
+ringPct.Text        = "100%"
+ringPct.TextColor3  = C.green
+ringArcS.Color      = C.green
+pctLbl.Text         = "100%"
+pctLbl.TextColor3   = C.green
+statusLbl.Text      = "All systems ready!"
+statusLbl.TextColor3 = C.green
+subLbl.Text         = "ALL SYSTEMS READY"
+subLbl.TextColor3   = C.green
+outerStroke.Color   = C.green
+TweenService:Create(barFill, TweenInfo.new(0.3),
+    {BackgroundColor3 = C.green, Size = UDim2.new(1,0,1,0)}):Play()
+pushLog("[ DONE ]  all modules ready — have fun", true)
+logLines[3].TextColor3 = C.green
+
+task.wait(1.2)
+
+-- ── FADE OUT
+TweenService:Create(card,
+    TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+    {BackgroundTransparency = 1, Position = UDim2.new(0.5, -CARD_W/2, 0.44, -CARD_H/2)}):Play()
+TweenService:Create(cardStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+TweenService:Create(outerStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+TweenService:Create(loadBg,
+    TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+    {BackgroundTransparency = 1}):Play()
+
+for _, lbl in ipairs({titleLbl, subLbl, statusLbl, pctLbl, ringPct}) do
+    TweenService:Create(lbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+end
+for _, mc in ipairs(modCells) do
+    TweenService:Create(mc.row, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(mc.rlbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+end
+for _, ll in ipairs(logLines) do
+    TweenService:Create(ll, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+end
+
+task.wait(0.55)
+loadGui:Destroy()
+
+print("Kawatan Hub — Loading complete!")
